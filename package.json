@@ -1,0 +1,24 @@
+{
+  "name": "supernova",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "author": "Brandon Aaskov (baaskov@fullscreen.net)",
+  "license": "MIT",
+  "devDependencies": {
+    "gulp-less": "~1.2.3",
+    "gulp-angular-templatecache": "~1.1.3",
+    "gulp": "~3.6.1",
+    "lodash": "~2.4.1",
+    "gulp-plumber": "~0.6.1",
+    "connect": "~2.14.4",
+    "gulp-concat": "~2.2.0",
+    "gulp-concat-css": "~0.1.4",
+    "gulp-ngmin": "~0.2.0",
+    "gulp-rename": "~1.2.0",
+    "gulp-uglify": "~0.2.1"
+  }
+}

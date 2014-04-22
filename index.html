@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+  <meta charset="UTF-8">
+  <title>Watch Fullscreen</title>
+
+  <link rel="stylesheet" href="vendor/bootstrap/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="vendor/bootstrap/dist/css/bootstrap-theme.min.css">
+  <link rel="stylesheet" href="build/supernova.css">
+
+  <script src="vendor/angular/angular.js"></script>
+  <script src="vendor/angular-bootstrap/ui-bootstrap.min.js"></script>
+  <script src="vendor/angular-bootstrap/ui-bootstrap-tpls.min.js"></script>
+  <script src="vendor/angular-file-upload/angular-file-upload.min.js"></script>
+  <script src="build/templates.js"></script>
+  <script src="build/supernova.js"></script>
+
+  <script>
+    //this is a good example of how you'd include the radial with your app
+    angular.module('demo', ['upload']);
+
+    // everything else in this script block is for this example page,
+    // so just ignore it
+    angular.module('demo').controller('demoController', function ($scope) {
+      console.log('demo controller');
+    });
+  </script>
+</head>
+<body ng-app="demo" ng-controller="demoController">
+  <uploader></uploader>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "supernova",
+  "version": "0.0.0",
+  "authors": [
+    "Brandon Aaskov <baaskov@fullscreen.net>"
+  ],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular": "latest",
+    "angular-resource": "latest",
+    "angular-cookies": "latest",
+    "angular-mocks": "latest",
+    "angular-route": "latest",
+    "bootstrap": "3.0.3",
+    "angular-bootstrap": "0.10.0",
+    "angular-ui-router": "#master",
+    "angular-file-upload": "~0.5.5"
+  }
+}
