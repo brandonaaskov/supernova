@@ -8,18 +8,21 @@
   <link rel="stylesheet" href="vendor/bootstrap/dist/css/bootstrap-theme.min.css">
   <link rel="stylesheet" href="build/supernova.css">
 
+  <!-- the basics -->
   <script src="vendor/angular/angular.js"></script>
   <script src="vendor/angular-bootstrap/ui-bootstrap.min.js"></script>
   <script src="vendor/angular-bootstrap/ui-bootstrap-tpls.min.js"></script>
   <script src="vendor/angular-file-upload/angular-file-upload.min.js"></script>
-  <script src="vendor/pubnub-3.6.1.min.js"></script>
-  <script src="vendor/pubnub-angular/lib/pubnub-angular.js"></script>
+  <script src="vendor/angular-cookies/angular-cookies.js"></script>
+
+  <!-- the extras -->
+  <script src="vendor/angular-segmentio/angular-segmentio.js"></script>
   <script src="build/templates.js"></script>
   <script src="build/supernova.js"></script>
 
   <script>
     //this is a good example of how you'd include the radial with your app
-    angular.module('demo', ['upload']);
+    angular.module('demo', ['fs.watch']);
 
     // everything else in this script block is for this example page,
     // so just ignore it
