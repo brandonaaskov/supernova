@@ -1,5 +1,12 @@
-angular.module('upload', ['templates', 'angularFileUpload']).directive 'uploader', ($fileUploader) ->
+angular.module('upload', ['templates', 'angularFileUpload', 'pubnub.angular.service'])
+.directive 'uploader', ($fileUploader, PubNub) ->
   restrict: 'E'
   templateUrl: 'upload.html'
   link: (scope) ->
-    console.log 'uploader linked'
+#    PubNub.ngPublish({
+#      channel: 'fs.watch.uploads',
+#      message: 'test message'
+#    });
+#
+#    PubNub.ngSubscribe
+    console.log 'PubNub', PubNub

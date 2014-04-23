@@ -1,9 +1,9 @@
-angular.module('upload', ['templates', 'angularFileUpload']).directive('uploader', function($fileUploader) {
+angular.module('upload', ['templates', 'angularFileUpload', 'pubnub.angular.service']).directive('uploader', function($fileUploader, PubNub) {
   return {
     restrict: 'E',
     templateUrl: 'upload.html',
     link: function(scope) {
-      return console.log('uploader linked');
+      return console.log('PubNub', PubNub);
     }
   };
 });
