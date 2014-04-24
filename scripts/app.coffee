@@ -1,4 +1,4 @@
-angular.module 'fs.watch', [
+angular.module 'fullscreen.tv', [
   'ngCookies'
   'templates'
   'angularFileUpload'

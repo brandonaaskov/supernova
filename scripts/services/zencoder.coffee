@@ -1,4 +1,4 @@
-angular.module('fs.watch').service 'zencoder', ($http) ->
+angular.module('fullscreen.tv').service 'zencoder', ($http) ->
   getJobProgress: (id, jobId) -> $http.post("videos/#{id}/#{jobId}/progress").then (response) -> return response.data
 
 .config ($httpProvider) ->

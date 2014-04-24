@@ -1,4 +1,4 @@
-angular.module('fs.watch').service 'liveSync', (firebase, $window) ->
+angular.module('fullscreen.tv').service 'liveSync', (firebase, $window) ->
   navigator.getMedia =
     navigator.getUserMedia or
     navigator.webkitGetUserMedia or
