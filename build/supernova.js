@@ -92,6 +92,10 @@ angular.module('fullscreen.tv').directive('uploadsManager', function($http, $tim
   };
 });
 
+angular.module('fullscreen.tv').controller('uploadsController', function($scope, firebase) {
+  return $scope.userUploads = firebase.userUploads;
+});
+
 angular.module('fullscreen.tv').directive('filepicker', function($window, firebase, analytics, zencoder) {
   return {
     restrict: 'A',
@@ -286,8 +290,9 @@ angular.module('fullscreen.tv').constant('config', {
 });
 
 angular.module('fullscreen.tv').service('firebase', function($firebase, $cookies, config, $rootScope, $q) {
-  var clock, getServerTime, publicAPI;
+  var clock, getServerTime, guid, publicAPI;
   clock = new Firebase(config.firebase.clock);
+  guid = $cookies.guid;
   getServerTime = function() {
     var deferred;
     deferred = $q.defer();
@@ -300,8 +305,9 @@ angular.module('fullscreen.tv').service('firebase', function($firebase, $cookies
   };
   return publicAPI = {
     uploads: $firebase(new Firebase(config.firebase.uploads)),
+    userUploads: $firebase(new Firebase("" + config.firebase.uploads + "/" + guid)),
     getServerTime: getServerTime,
-    guid: $cookies.guid
+    guid: guid
   };
 });
 

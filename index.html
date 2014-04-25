@@ -37,8 +37,14 @@
       <button class="btn btn-primary btn-lg" filepicker ng-click="pick()">File Picker</button>
     </div>
 
-    <div class="jumbotron step">
+    <div class="jumbotron step" ng-controller="uploadsController">
       <h1 class="clickable" talk-nerdy-to-me="manage your video's metadata">Step 2: Review Your Shit</h1>
+
+      <ol>
+        <li class="video" ng-repeat="video in userUploads">
+          {{video.filename}}
+        </li>
+      </ol>
     </div>
   </div>
 
