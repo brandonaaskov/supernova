@@ -15,28 +15,31 @@
   <script src="vendor/angular-cookies/angular-cookies.js"></script>
 
   <!-- the extras -->
-  <script src="vendor/angular-segmentio/angular-segmentio.js"></script>
+  <script src="vendor/angular-segmentio/angular-segmentio.js"></script> <!-- analytics -->
   <script src="vendor/firebase/firebase.js"></script>
   <script src="vendor/angularfire/angularfire.min.js"></script>
-  <script src="vendor/filepicker/filepicker.min.js"></script>
+  <script src="vendor/filepicker/filepicker.min.js"></script> <!-- file uploader service -->
   <script src="vendor/videojs/dist/video-js/video.js"></script>
-  <script src="build/templates.js"></script>
-  <script src="build/supernova.js"></script>
-
-  <script>
-    //this is a good example of how you'd include the radial with your app
-    angular.module('demo', ['fullscreen.tv']);
-
-    // everything else in this script block is for this example page,
-    // so just ignore it
-    angular.module('demo').controller('demoController', function ($scope) {
-      console.log('demo controller');
-    });
-  </script>
+  <script src="vendor/speech-synthesis/polyfill.min.js"></script>
+  <script src="build/templates.js"></script> <!-- views compiled into $templateCache -->
+  <script src="build/supernova.js"></script> <!-- application build file -->
 </head>
-<body ng-app="demo">
-  <div class="container" ng-controller="demoController">
-    <filepicker></filepicker>
+<body ng-app="fullscreen.tv">
+  <div class="container">
+    <div class="jumbotron step">
+      <h1
+        class="clickable"
+        talk-nerdy-to-me="upload your videos here"
+      >
+        Step 1: Upload Your Shit
+      </h1>
+
+      <button class="btn btn-primary btn-lg" filepicker ng-click="pick()">File Picker</button>
+    </div>
+
+    <div class="jumbotron step">
+      <h1 class="clickable" talk-nerdy-to-me="manage your video's metadata">Step 2: Review Your Shit</h1>
+    </div>
   </div>
 </body>
 </html>

@@ -1,31 +1,29 @@
-angular.module('fullscreen.tv').directive 'filepicker', ($window) ->
-  restrict: 'E'
-  templateUrl: 'filepicker.html'
-  link: (scope, element, attrs) ->
+angular.module('fullscreen.tv').directive 'filepicker', ($window, firebase, segmentio) ->
+  restrict: 'A'
+  link: (scope) ->
     scope.filepicker = $window.filepicker
     scope.filepicker.setKey 'AiCDu1zCuQQysPoX9Mb9bz'
 
   controller: ($scope) ->
-    picker =
-      options:
-#        mimetypes: [
-#          'image/*'
-#          'text/plain'
-#        ]
-        container: 'window'
+    options =
+      picker:
         services: [
           'COMPUTER'
           'DROPBOX'
           'BOX'
           'GOOGLE_DRIVE'
-          'VIDEO'
-          'WEBCAM'
         ]
-      success: (inkBlob) ->
-        console.log 'picker.success', inkBlob
-        # todo store inkBlob in firebase
-      error: (error) -> console.log 'picker.error', error
+        container: 'window'
+        multiple: true
+      store:
+        path: 'uploads/'
 
-    $scope.pick = (options = {}) ->
-      options = angular.extend picker.options, options
-      $scope.filepicker.pick options, picker.success, picker.error
+    success = (inkBlob) ->
+        firebase.uploads.$child(firebase.guid).$add(inkBlob)
+        segmentio.track 'Upload: Success', inkBlob
+
+    error = (FPError) ->
+        segmentio.track 'Upload: Error', FPError.toString()
+
+    $scope.pick = ->
+      $scope.filepicker.pickAndStore options.picker, options.store, success, error

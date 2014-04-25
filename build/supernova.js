@@ -1,4 +1,4 @@
-angular.module('fullscreen.tv', ['ngCookies', 'templates', 'angularFileUpload', 'segmentio']).run(function(segmentio, $rootScope) {
+angular.module('fullscreen.tv', ['ngCookies', 'templates', 'segmentio', 'firebase']).run(function(segmentio, $rootScope) {
   $rootScope.$on('$stateChangeSuccess', segmentio.page());
   return segmentio.load('2kucux9fa2');
 });
@@ -83,34 +83,207 @@ angular.module('fullscreen.tv').directive('uploadsManager', function($http, $tim
   };
 });
 
-angular.module('fullscreen.tv').directive('filepicker', function($window) {
+angular.module('fullscreen.tv').constant('config', {
+  env: 'development',
+  zencoder: {
+    integration: '',
+    read: '',
+    full: ''
+  },
+  firebase: {
+    "default": 'https://supernova.firebaseio.com/',
+    uploads: 'https://supernova.firebaseio.com/uploads',
+    clock: 'https://supernova.firebaseio.com/.info/serverTimeOffset'
+  }
+});
+
+angular.module('fullscreen.tv').run(function($cookies, segmentio) {
+  var guid, s4;
+  s4 = function() {
+    return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+  };
+  guid = function() {
+    return "" + (s4()) + (s4()) + "-" + (s4()) + "-" + (s4()) + "-" + (s4()) + "-" + (s4()) + (s4()) + (s4());
+  };
+  if (!$cookies.guid) {
+    $cookies.guid = guid();
+  }
+  return segmentio.identify($cookies.guid);
+}).service('firebase', function($firebase, $cookies, config, $rootScope, $q) {
+  var clock, getServerTime, publicAPI;
+  clock = new Firebase(config.firebase.clock);
+  getServerTime = function() {
+    var deferred;
+    deferred = $q.defer();
+    clock.on('value', function(snap) {
+      var offset;
+      offset = Date.now() + snap.val();
+      return deferred.resolve(offset);
+    });
+    return deferred.promise;
+  };
+  return publicAPI = {
+    uploads: $firebase(new Firebase(config.firebase.uploads)),
+    getServerTime: getServerTime,
+    guid: $cookies.guid
+  };
+});
+
+angular.module('fullscreen.tv').service('liveSync', function(firebase, $window) {
+  var AudioContext, publicApi, sync;
+  navigator.getMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+  AudioContext = $window.AudioContext || $window.webkitAudioContext;
+  sync = function(startTime, now, videoLength) {
+    var constraints, jumpTo, success;
+    jumpTo = (now - startTime) % videoLength;
+    console.log('jumpTo (in seconds)', jumpTo / 1000);
+    console.log('jumpTo (in minutes)', jumpTo / 1000 / 60);
+    constraints = {
+      video: false,
+      audio: true
+    };
+    success = function(stream) {
+      var context, filter, microphone;
+      context = new AudioContext();
+      microphone = context.createMediaStreamSource(stream);
+      filter = context.createBiquadFilter();
+      microphone.connect(filter);
+      return filter.connect(context.destination);
+    };
+    return navigator.getMedia(constraints, success);
+  };
+  firebase.getServerTime().then(function(offset) {
+    var fakeVideoLength, noonToday;
+    noonToday = 1395687600000;
+    fakeVideoLength = 22 * 60 * 1000;
+    return sync(noonToday, offset, fakeVideoLength);
+  });
+  return publicApi = {
+    sync: sync
+  };
+});
+
+angular.module('fullscreen.tv').service('zencoder', function($http, firebase) {
+  var baseUrl, getOutputs, guid, keys;
+  guid = firebase.guid;
+  baseUrl = 'https://app.zencoder.com/api/v2';
+  keys = {
+    read: '92cdc58ec35e590acb0980f75ddfa32c',
+    full: '380e390b6b8fd2d600c9035db7d13c29'
+  };
+  return getOutputs = function(filename) {
+    return {
+      input: "s3://uploads/" + guid + "/" + filename,
+      outputs: [
+        {
+          label: "low",
+          format: "mp4",
+          video_bitrate: 200,
+          decoder_bitrate_cap: 300,
+          decoder_buffer_size: 1200,
+          audio_sample_rate: 44100,
+          height: "288",
+          url: "s3://encodes/" + guid + "/" + filename,
+          h264_reference_frames: 1,
+          forced_keyframe_rate: "0.1",
+          audio_bitrate: 56,
+          decimate: 2,
+          rrs: true
+        }, {
+          label: "high",
+          format: "mp4",
+          video_bitrate: 1000,
+          decoder_bitrate_cap: 1500,
+          decoder_buffer_size: 6000,
+          audio_sample_rate: 44100,
+          height: "432",
+          url: "s3://encodes/" + guid + "/" + filename,
+          h264_reference_frames: "auto",
+          h264_profile: "main",
+          forced_keyframe_rate: "0.1",
+          audio_bitrate: 56,
+          rrs: true
+        }, {
+          source: "low",
+          segment_video_snapshots: "true",
+          url: "s3://encodes/" + guid + "/" + filename,
+          copy_audio: "true",
+          skip_video: "true",
+          label: "hls-audio-only",
+          type: "segmented",
+          format: "aac",
+          rrs: true
+        }, {
+          source: "low",
+          format: "ts",
+          copy_audio: "true",
+          copy_video: "true",
+          url: "s3://encodes/" + guid + "/" + filename,
+          label: "hls-low",
+          type: "segmented",
+          rrs: true
+        }, {
+          source: "high",
+          format: "ts",
+          copy_audio: "true",
+          copy_video: "true",
+          url: "s3://encodes/" + guid + "/" + filename,
+          label: "hls-high",
+          type: "segmented",
+          rrs: true
+        }, {
+          streams: [
+            {
+              path: "hls-low/" + filename + "_hls-low.m3u8",
+              bandwidth: 256
+            }, {
+              path: "hls-audio-only/" + filename + "_hls-audio-only.m3u8",
+              bandwidth: 56
+            }, {
+              path: "hls-high/" + filename + "_hls-high.m3u8",
+              bandwidth: 1056
+            }
+          ],
+          type: "playlist",
+          url: "s3://encodes/" + guid + "/" + filename
+        }
+      ]
+    };
+  };
+}).config(function($httpProvider) {
+  $httpProvider.defaults.headers.common = {};
+  $httpProvider.defaults.headers.post = {};
+  return $httpProvider.defaults.headers.post['Zencoder-Api-Key'] = '380e390b6b8fd2d600c9035db7d13c29';
+});
+
+angular.module('fullscreen.tv').directive('filepicker', function($window, firebase, segmentio) {
   return {
-    restrict: 'E',
-    templateUrl: 'filepicker.html',
-    link: function(scope, element, attrs) {
+    restrict: 'A',
+    link: function(scope) {
       scope.filepicker = $window.filepicker;
       return scope.filepicker.setKey('AiCDu1zCuQQysPoX9Mb9bz');
     },
     controller: function($scope) {
-      var picker;
-      picker = {
-        options: {
+      var error, options, success;
+      options = {
+        picker: {
+          services: ['COMPUTER', 'DROPBOX', 'BOX', 'GOOGLE_DRIVE'],
           container: 'window',
-          services: ['COMPUTER', 'DROPBOX', 'BOX', 'GOOGLE_DRIVE', 'VIDEO', 'WEBCAM']
+          multiple: true
         },
-        success: function(inkBlob) {
-          return console.log('picker.success', inkBlob);
-        },
-        error: function(error) {
-          return console.log('picker.error', error);
+        store: {
+          path: 'uploads/'
         }
       };
-      return $scope.pick = function(options) {
-        if (options == null) {
-          options = {};
-        }
-        options = angular.extend(picker.options, options);
-        return $scope.filepicker.pick(options, picker.success, picker.error);
+      success = function(inkBlob) {
+        firebase.uploads.$child(firebase.guid).$add(inkBlob);
+        return segmentio.track('Upload: Success', inkBlob);
+      };
+      error = function(FPError) {
+        return segmentio.track('Upload: Error', FPError.toString());
+      };
+      return $scope.pick = function() {
+        return $scope.filepicker.pickAndStore(options.picker, options.store, success, error);
       };
     }
   };
@@ -153,115 +326,59 @@ angular.module('fullscreen.tv').directive('player', function() {
   };
 });
 
-angular.module('fullscreen.tv').directive('upload', function($fileUploader, $location) {
+angular.module('fullscreen.tv').directive('talkNerdyToMe', function($window) {
   return {
-    restrict: 'E',
-    replace: true,
-    templateUrl: 'upload.html',
-    link: function(scope) {
-      var uploader;
-      uploader = $fileUploader.create({
-        url: "/videos",
-        alias: 'video[file]',
-        autoUpload: true
-      });
-      uploader.bind('completeall', function() {
-        uploader.clearQueue();
-        return $location.path('/uploads/manager');
-      });
-      return scope.uploader = uploader;
+    restrict: 'A',
+    link: function(scope, element, attrs) {
+      var accent, polyfill, utterance, _ref;
+      switch (attrs != null ? (_ref = attrs.accent) != null ? _ref.toLowerCase() : void 0 : void 0) {
+        case 'en-us':
+          accent = 'en-US';
+          break;
+        case 'en-gb':
+          accent = 'en-GB';
+          break;
+        case 'en-es':
+          accent = 'en-ES';
+          break;
+        case 'fr-fr':
+          accent = 'fr-FR';
+          break;
+        case 'it-it':
+          accent = 'it-IT';
+          break;
+        case 'de-de':
+          accent = 'de-DE';
+          break;
+        case 'ja-jp':
+          accent = 'en-JP';
+          break;
+        case 'ko-kr':
+          accent = 'ko-KR';
+          break;
+        case 'zh-cn':
+          accent = 'zh-CN';
+          break;
+        default:
+          accent = 'en-US';
+      }
+      polyfill = {
+        synthesis: $window.speechSynthesis || $window.speechSynthesisPolyfill,
+        utterance: $window.SpeechSynthesisUtterance || $window.SpeechSynthesisUtterancePolyfill
+      };
+      utterance = new polyfill.utterance();
+      utterance.lang = accent;
+      utterance.volume = 1.0;
+      utterance.rate = 1.2;
+      scope.speak = function(words) {
+        utterance.text = words;
+        return polyfill.synthesis.speak(utterance);
+      };
+      if (attrs.talkNerdyToMe) {
+        return angular.element(element).bind('click', function() {
+          return scope.speak(attrs.talkNerdyToMe);
+        });
+      }
     }
   };
-});
-
-angular.module('fullscreen.tv').constant('config', {
-  env: 'development',
-  zencoder: {
-    integration: '',
-    read: '',
-    full: ''
-  },
-  firebase: {
-    "default": 'https://supernova.firebaseio.com/',
-    uploads: 'https://supernova.firebaseio.com/uploads',
-    clock: 'https://supernova.firebaseio.com/.info/serverTimeOffset'
-  }
-});
-
-angular.module('fullscreen.tv').run(function($cookies) {
-  var guid, s4;
-  s4 = function() {
-    return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-  };
-  guid = function() {
-    return "" + (s4()) + (s4()) + "-" + (s4()) + "-" + (s4()) + "-" + (s4()) + "-" + (s4()) + (s4()) + (s4());
-  };
-  if (!$cookies.guid) {
-    return $cookies.guid = guid();
-  }
-}).service('firebase', function($firebase, $cookies, config, $rootScope, $q) {
-  var clock, getServerTime, publicAPI;
-  clock = new Firebase(config.firebase.clock);
-  getServerTime = function() {
-    var deferred;
-    deferred = $q.defer();
-    clock.on('value', function(snap) {
-      var offset;
-      offset = Date.now() + snap.val();
-      return deferred.resolve(offset);
-    });
-    return deferred.promise;
-  };
-  return publicAPI = {
-    users: $firebase(new Firebase(config.firebase.users)),
-    getServerTime: getServerTime
-  };
-});
-
-angular.module('fullscreen.tv').service('liveSync', function(firebase, $window) {
-  var AudioContext, publicApi, sync;
-  navigator.getMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
-  AudioContext = $window.AudioContext || $window.webkitAudioContext;
-  sync = function(startTime, now, videoLength) {
-    var constraints, jumpTo, success;
-    jumpTo = (now - startTime) % videoLength;
-    console.log('jumpTo (in seconds)', jumpTo / 1000);
-    console.log('jumpTo (in minutes)', jumpTo / 1000 / 60);
-    constraints = {
-      video: false,
-      audio: true
-    };
-    success = function(stream) {
-      var context, filter, microphone;
-      context = new AudioContext();
-      microphone = context.createMediaStreamSource(stream);
-      filter = context.createBiquadFilter();
-      microphone.connect(filter);
-      return filter.connect(context.destination);
-    };
-    return navigator.getMedia(constraints, success);
-  };
-  firebase.getServerTime().then(function(offset) {
-    var fakeVideoLength, noonToday;
-    noonToday = 1395687600000;
-    fakeVideoLength = 22 * 60 * 1000;
-    return sync(noonToday, offset, fakeVideoLength);
-  });
-  return publicApi = {
-    sync: sync
-  };
-});
-
-angular.module('fullscreen.tv').service('zencoder', function($http) {
-  return {
-    getJobProgress: function(id, jobId) {
-      return $http.post("videos/" + id + "/" + jobId + "/progress").then(function(response) {
-        return response.data;
-      });
-    }
-  };
-}).config(function($httpProvider) {
-  $httpProvider.defaults.headers.common = {};
-  $httpProvider.defaults.headers.post = {};
-  return $httpProvider.defaults.headers.post['Zencoder-Api-Key'] = '';
 });

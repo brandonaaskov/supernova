@@ -1,8 +1,8 @@
 angular.module 'fullscreen.tv', [
   'ngCookies'
   'templates'
-  'angularFileUpload'
   'segmentio'
+  'firebase'
 ]
 .run (segmentio, $rootScope) ->
   $rootScope.$on '$stateChangeSuccess', segmentio.page()
