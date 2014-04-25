@@ -23,11 +23,11 @@
     "angular-bootstrap": "0.10.0",
     "angular-ui-router": "#master",
     "angular-file-upload": "~0.5.5",
-    "angular-segmentio": "*",
     "videojs": "~4.5.2",
     "filepicker": "*",
     "angularfire": "~0.7.1",
     "firebase": "~1.0.11",
-    "speech-synthesis": "latest"
+    "speech-synthesis": "latest",
+    "underscore": "~1.6.0"
   }
 }

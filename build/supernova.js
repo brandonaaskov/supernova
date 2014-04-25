@@ -1,6 +1,15 @@
-angular.module('fullscreen.tv', ['ngCookies', 'templates', 'segmentio', 'firebase']).run(function(segmentio, $rootScope) {
-  $rootScope.$on('$stateChangeSuccess', segmentio.page());
-  return segmentio.load('2kucux9fa2');
+angular.module('fullscreen.tv', ['ngCookies', 'templates', 'firebase']).run(function($cookies, analytics) {
+  var guid, s4;
+  s4 = function() {
+    return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+  };
+  guid = function() {
+    return "" + (s4()) + (s4()) + "-" + (s4()) + "-" + (s4()) + "-" + (s4()) + "-" + (s4()) + (s4()) + (s4());
+  };
+  if (!$cookies.guid) {
+    $cookies.guid = guid();
+  }
+  return analytics.identify($cookies.guid);
 });
 
 angular.module('fullscreen.tv').directive('upload', function($fileUploader, $location) {
@@ -83,180 +92,7 @@ angular.module('fullscreen.tv').directive('uploadsManager', function($http, $tim
   };
 });
 
-angular.module('fullscreen.tv').constant('config', {
-  env: 'development',
-  zencoder: {
-    integration: '',
-    read: '',
-    full: ''
-  },
-  firebase: {
-    "default": 'https://supernova.firebaseio.com/',
-    uploads: 'https://supernova.firebaseio.com/uploads',
-    clock: 'https://supernova.firebaseio.com/.info/serverTimeOffset'
-  }
-});
-
-angular.module('fullscreen.tv').run(function($cookies, segmentio) {
-  var guid, s4;
-  s4 = function() {
-    return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-  };
-  guid = function() {
-    return "" + (s4()) + (s4()) + "-" + (s4()) + "-" + (s4()) + "-" + (s4()) + "-" + (s4()) + (s4()) + (s4());
-  };
-  if (!$cookies.guid) {
-    $cookies.guid = guid();
-  }
-  return segmentio.identify($cookies.guid);
-}).service('firebase', function($firebase, $cookies, config, $rootScope, $q) {
-  var clock, getServerTime, publicAPI;
-  clock = new Firebase(config.firebase.clock);
-  getServerTime = function() {
-    var deferred;
-    deferred = $q.defer();
-    clock.on('value', function(snap) {
-      var offset;
-      offset = Date.now() + snap.val();
-      return deferred.resolve(offset);
-    });
-    return deferred.promise;
-  };
-  return publicAPI = {
-    uploads: $firebase(new Firebase(config.firebase.uploads)),
-    getServerTime: getServerTime,
-    guid: $cookies.guid
-  };
-});
-
-angular.module('fullscreen.tv').service('liveSync', function(firebase, $window) {
-  var AudioContext, publicApi, sync;
-  navigator.getMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
-  AudioContext = $window.AudioContext || $window.webkitAudioContext;
-  sync = function(startTime, now, videoLength) {
-    var constraints, jumpTo, success;
-    jumpTo = (now - startTime) % videoLength;
-    console.log('jumpTo (in seconds)', jumpTo / 1000);
-    console.log('jumpTo (in minutes)', jumpTo / 1000 / 60);
-    constraints = {
-      video: false,
-      audio: true
-    };
-    success = function(stream) {
-      var context, filter, microphone;
-      context = new AudioContext();
-      microphone = context.createMediaStreamSource(stream);
-      filter = context.createBiquadFilter();
-      microphone.connect(filter);
-      return filter.connect(context.destination);
-    };
-    return navigator.getMedia(constraints, success);
-  };
-  firebase.getServerTime().then(function(offset) {
-    var fakeVideoLength, noonToday;
-    noonToday = 1395687600000;
-    fakeVideoLength = 22 * 60 * 1000;
-    return sync(noonToday, offset, fakeVideoLength);
-  });
-  return publicApi = {
-    sync: sync
-  };
-});
-
-angular.module('fullscreen.tv').service('zencoder', function($http, firebase) {
-  var baseUrl, getOutputs, guid, keys;
-  guid = firebase.guid;
-  baseUrl = 'https://app.zencoder.com/api/v2';
-  keys = {
-    read: '92cdc58ec35e590acb0980f75ddfa32c',
-    full: '380e390b6b8fd2d600c9035db7d13c29'
-  };
-  return getOutputs = function(filename) {
-    return {
-      input: "s3://uploads/" + guid + "/" + filename,
-      outputs: [
-        {
-          label: "low",
-          format: "mp4",
-          video_bitrate: 200,
-          decoder_bitrate_cap: 300,
-          decoder_buffer_size: 1200,
-          audio_sample_rate: 44100,
-          height: "288",
-          url: "s3://encodes/" + guid + "/" + filename,
-          h264_reference_frames: 1,
-          forced_keyframe_rate: "0.1",
-          audio_bitrate: 56,
-          decimate: 2,
-          rrs: true
-        }, {
-          label: "high",
-          format: "mp4",
-          video_bitrate: 1000,
-          decoder_bitrate_cap: 1500,
-          decoder_buffer_size: 6000,
-          audio_sample_rate: 44100,
-          height: "432",
-          url: "s3://encodes/" + guid + "/" + filename,
-          h264_reference_frames: "auto",
-          h264_profile: "main",
-          forced_keyframe_rate: "0.1",
-          audio_bitrate: 56,
-          rrs: true
-        }, {
-          source: "low",
-          segment_video_snapshots: "true",
-          url: "s3://encodes/" + guid + "/" + filename,
-          copy_audio: "true",
-          skip_video: "true",
-          label: "hls-audio-only",
-          type: "segmented",
-          format: "aac",
-          rrs: true
-        }, {
-          source: "low",
-          format: "ts",
-          copy_audio: "true",
-          copy_video: "true",
-          url: "s3://encodes/" + guid + "/" + filename,
-          label: "hls-low",
-          type: "segmented",
-          rrs: true
-        }, {
-          source: "high",
-          format: "ts",
-          copy_audio: "true",
-          copy_video: "true",
-          url: "s3://encodes/" + guid + "/" + filename,
-          label: "hls-high",
-          type: "segmented",
-          rrs: true
-        }, {
-          streams: [
-            {
-              path: "hls-low/" + filename + "_hls-low.m3u8",
-              bandwidth: 256
-            }, {
-              path: "hls-audio-only/" + filename + "_hls-audio-only.m3u8",
-              bandwidth: 56
-            }, {
-              path: "hls-high/" + filename + "_hls-high.m3u8",
-              bandwidth: 1056
-            }
-          ],
-          type: "playlist",
-          url: "s3://encodes/" + guid + "/" + filename
-        }
-      ]
-    };
-  };
-}).config(function($httpProvider) {
-  $httpProvider.defaults.headers.common = {};
-  $httpProvider.defaults.headers.post = {};
-  return $httpProvider.defaults.headers.post['Zencoder-Api-Key'] = '380e390b6b8fd2d600c9035db7d13c29';
-});
-
-angular.module('fullscreen.tv').directive('filepicker', function($window, firebase, segmentio) {
+angular.module('fullscreen.tv').directive('filepicker', function($window, firebase, analytics, zencoder) {
   return {
     restrict: 'A',
     link: function(scope) {
@@ -264,23 +100,56 @@ angular.module('fullscreen.tv').directive('filepicker', function($window, fireba
       return scope.filepicker.setKey('AiCDu1zCuQQysPoX9Mb9bz');
     },
     controller: function($scope) {
-      var error, options, success;
+      var error, getFilename, options, saveUploads, startJobs, success, userUploads;
+      userUploads = firebase.uploads.$child(firebase.guid);
       options = {
         picker: {
           services: ['COMPUTER', 'DROPBOX', 'BOX', 'GOOGLE_DRIVE'],
           container: 'window',
-          multiple: true
+          multiple: true,
+          mimetype: 'video/*'
         },
         store: {
-          path: 'uploads/'
+          path: "uploads/" + firebase.guid + "/"
         }
       };
       success = function(inkBlob) {
-        firebase.uploads.$child(firebase.guid).$add(inkBlob);
-        return segmentio.track('Upload: Success', inkBlob);
+        saveUploads(inkBlob);
+        startJobs(inkBlob);
+        return analytics.track('Upload: Success', inkBlob);
       };
       error = function(FPError) {
-        return segmentio.track('Upload: Error', FPError.toString());
+        return analytics.track('Upload: Error', FPError.toString());
+      };
+      getFilename = function(key, dropExtension) {
+        var filename;
+        if (dropExtension == null) {
+          dropExtension = true;
+        }
+        filename = _.last(key.split("uploads/" + firebase.guid + "/"));
+        if (!dropExtension) {
+          return filename;
+        }
+        return _.first(filename.split('.'));
+      };
+      saveUploads = function(inkBlob) {
+        return _(inkBlob).each(function(file) {
+          var filename;
+          filename = getFilename(file.key);
+          userUploads[filename] = file;
+          return userUploads.$save(filename);
+        });
+      };
+      startJobs = function(inkBlob) {
+        var keys;
+        keys = _(inkBlob).pluck('key');
+        return _(keys).each(function(filename) {
+          return zencoder.createJob(filename).then(function(response) {
+            return userUploads.$child(getFilename(filename)).$update({
+              zencoder: response
+            });
+          });
+        });
       };
       return $scope.pick = function() {
         return $scope.filepicker.pickAndStore(options.picker, options.store, success, error);
@@ -381,4 +250,194 @@ angular.module('fullscreen.tv').directive('talkNerdyToMe', function($window) {
       }
     }
   };
+});
+
+var __slice = [].slice;
+
+angular.module('fullscreen.tv').factory('analytics', function() {
+  var methods;
+  methods = {};
+  ['page', 'pageview', 'track', 'identify'].forEach(function(method) {
+    return methods[method] = function() {
+      var args;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      return window.analytics[method].apply(window.analytics, args);
+    };
+  });
+  return methods;
+}).run(function(analytics, $rootScope) {
+  return $rootScope.$on("$routeChangeSuccess", function() {
+    return analytics.page();
+  });
+});
+
+angular.module('fullscreen.tv').constant('config', {
+  env: 'development',
+  zencoder: {
+    integration: '',
+    read: '',
+    full: ''
+  },
+  firebase: {
+    "default": 'https://supernova.firebaseio.com/',
+    uploads: 'https://supernova.firebaseio.com/uploads',
+    clock: 'https://supernova.firebaseio.com/.info/serverTimeOffset'
+  }
+});
+
+angular.module('fullscreen.tv').service('firebase', function($firebase, $cookies, config, $rootScope, $q) {
+  var clock, getServerTime, publicAPI;
+  clock = new Firebase(config.firebase.clock);
+  getServerTime = function() {
+    var deferred;
+    deferred = $q.defer();
+    clock.on('value', function(snap) {
+      var offset;
+      offset = Date.now() + snap.val();
+      return deferred.resolve(offset);
+    });
+    return deferred.promise;
+  };
+  return publicAPI = {
+    uploads: $firebase(new Firebase(config.firebase.uploads)),
+    getServerTime: getServerTime,
+    guid: $cookies.guid
+  };
+});
+
+angular.module('fullscreen.tv').service('liveSync', function(firebase, $window) {
+  var AudioContext, publicApi, sync;
+  navigator.getMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+  AudioContext = $window.AudioContext || $window.webkitAudioContext;
+  sync = function(startTime, now, videoLength) {
+    var constraints, jumpTo, success;
+    jumpTo = (now - startTime) % videoLength;
+    console.log('jumpTo (in seconds)', jumpTo / 1000);
+    console.log('jumpTo (in minutes)', jumpTo / 1000 / 60);
+    constraints = {
+      video: false,
+      audio: true
+    };
+    success = function(stream) {
+      var context, filter, microphone;
+      context = new AudioContext();
+      microphone = context.createMediaStreamSource(stream);
+      filter = context.createBiquadFilter();
+      microphone.connect(filter);
+      return filter.connect(context.destination);
+    };
+    return navigator.getMedia(constraints, success);
+  };
+  firebase.getServerTime().then(function(offset) {
+    var fakeVideoLength, noonToday;
+    noonToday = 1395687600000;
+    fakeVideoLength = 22 * 60 * 1000;
+    return sync(noonToday, offset, fakeVideoLength);
+  });
+  return publicApi = {
+    sync: sync
+  };
+});
+
+angular.module('fullscreen.tv').service('zencoder', function($http, firebase) {
+  var baseUrl, createJob, getJobProgress, getOutputs, guid, keys, publicApi;
+  guid = firebase.guid;
+  baseUrl = 'https://app.zencoder.com/api/v2';
+  keys = {
+    read: '92cdc58ec35e590acb0980f75ddfa32c',
+    full: '380e390b6b8fd2d600c9035db7d13c29'
+  };
+  createJob = function(filename) {
+    return $http.post("" + baseUrl + "/jobs", getOutputs(filename));
+  };
+  getJobProgress = function(jobId) {
+    return $http.get("" + baseUrl + "/jobs/" + jobId + "/progress.json?api_key=" + keys.full);
+  };
+  getOutputs = function(filename) {
+    return {
+      input: "s3://uploads/" + guid + "/" + filename,
+      outputs: [
+        {
+          label: "low",
+          format: "mp4",
+          video_bitrate: 200,
+          decoder_bitrate_cap: 300,
+          decoder_buffer_size: 1200,
+          audio_sample_rate: 44100,
+          height: "288",
+          url: "s3://encodes/" + guid + "/" + filename,
+          h264_reference_frames: 1,
+          forced_keyframe_rate: "0.1",
+          audio_bitrate: 56,
+          decimate: 2,
+          rrs: true
+        }, {
+          label: "high",
+          format: "mp4",
+          video_bitrate: 1000,
+          decoder_bitrate_cap: 1500,
+          decoder_buffer_size: 6000,
+          audio_sample_rate: 44100,
+          height: "432",
+          url: "s3://encodes/" + guid + "/" + filename,
+          h264_reference_frames: "auto",
+          h264_profile: "main",
+          forced_keyframe_rate: "0.1",
+          audio_bitrate: 56,
+          rrs: true
+        }, {
+          source: "low",
+          segment_video_snapshots: "true",
+          url: "s3://encodes/" + guid + "/" + filename,
+          copy_audio: "true",
+          skip_video: "true",
+          label: "hls-audio-only",
+          type: "segmented",
+          format: "aac",
+          rrs: true
+        }, {
+          source: "low",
+          format: "ts",
+          copy_audio: "true",
+          copy_video: "true",
+          url: "s3://encodes/" + guid + "/" + filename,
+          label: "hls-low",
+          type: "segmented",
+          rrs: true
+        }, {
+          source: "high",
+          format: "ts",
+          copy_audio: "true",
+          copy_video: "true",
+          url: "s3://encodes/" + guid + "/" + filename,
+          label: "hls-high",
+          type: "segmented",
+          rrs: true
+        }, {
+          streams: [
+            {
+              path: "hls-low/" + filename + "_hls-low.m3u8",
+              bandwidth: 256
+            }, {
+              path: "hls-audio-only/" + filename + "_hls-audio-only.m3u8",
+              bandwidth: 56
+            }, {
+              path: "hls-high/" + filename + "_hls-high.m3u8",
+              bandwidth: 1056
+            }
+          ],
+          type: "playlist",
+          url: "s3://encodes/" + guid + "/" + filename
+        }
+      ]
+    };
+  };
+  return publicApi = {
+    createJob: createJob,
+    getJobProgress: getJobProgress
+  };
+}).config(function($httpProvider) {
+  $httpProvider.defaults.headers.common = {};
+  $httpProvider.defaults.headers.post = {};
+  return $httpProvider.defaults.headers.post['Zencoder-Api-Key'] = '380e390b6b8fd2d600c9035db7d13c29';
 });

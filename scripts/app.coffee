@@ -1,9 +1,12 @@
-angular.module 'fullscreen.tv', [
+angular.module('fullscreen.tv', [
   'ngCookies'
   'templates'
-  'segmentio'
   'firebase'
-]
-.run (segmentio, $rootScope) ->
-  $rootScope.$on '$stateChangeSuccess', segmentio.page()
-  segmentio.load '2kucux9fa2'
+])
+.run ($cookies, analytics) ->
+  # sets a unique guid so we can track users under one object (since they can login via many services)
+  s4 = -> Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1)
+  guid = -> "#{s4()}#{s4()}-#{s4()}-#{s4()}-#{s4()}-#{s4()}#{s4()}#{s4()}"
+  unless $cookies.guid then $cookies.guid = guid()
+
+  analytics.identify $cookies.guid

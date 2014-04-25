@@ -5,8 +5,7 @@ angular.module('fullscreen.tv').service 'zencoder', ($http, firebase) ->
     read: '92cdc58ec35e590acb0980f75ddfa32c'
     full: '380e390b6b8fd2d600c9035db7d13c29'
 
-#  createJob = ->
-#    $http.post "#{baseUrl}"
+  createJob = (filename) -> $http.post "#{baseUrl}/jobs", getOutputs(filename)
 
 #  getS3Url = (filename, extension, bucket = 'fullscreen-tv') ->
 #    "#{_.removeExtension("s3://#{bucket}/encoded/#{filename}")}.#{extension}"
@@ -20,7 +19,8 @@ angular.module('fullscreen.tv').service 'zencoder', ($http, firebase) ->
 #    $http.get("#{baseUrl}/jobs/#{jobId}.json?api_key=#{keys.full}")
 #      .then (response) -> return response.data?.job
 #
-#  getJobProgress = (jobId) -> $http.get("#{baseUrl}/jobs/#{jobId}/progress.json?api_key=#{keys.full}")
+  getJobProgress = (jobId) ->
+    $http.get("#{baseUrl}/jobs/#{jobId}/progress.json?api_key=#{keys.full}")
 
   getOutputs = (filename) ->
     input: "s3://uploads/#{guid}/#{filename}"
@@ -105,6 +105,10 @@ angular.module('fullscreen.tv').service 'zencoder', ($http, firebase) ->
         url: "s3://encodes/#{guid}/#{filename}"
       }
     ]
+
+  return publicApi =
+    createJob: createJob
+    getJobProgress: getJobProgress
 
 .config ($httpProvider) ->
   $httpProvider.defaults.headers.common = {} # clears it out
