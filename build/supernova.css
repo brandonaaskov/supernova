@@ -1,6 +1,9 @@
 .clickable {
   cursor: pointer;
 }
+.uploads .video .changed {
+  background-color: #ffff00;
+}
 .upload {
   color: black;
 }

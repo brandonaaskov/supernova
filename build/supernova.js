@@ -96,6 +96,46 @@ angular.module('fullscreen.tv').controller('uploadsController', function($scope,
   return $scope.userUploads = firebase.userUploads;
 });
 
+angular.module('fullscreen.tv').directive('contenteditable', function() {
+  return {
+    restrict: 'A',
+    require: "ngModel",
+    scope: {
+      onBlur: '&'
+    },
+    link: function(scope, element, attrs, ngModel) {
+      var original;
+      original = ngModel.$viewValue;
+      element.bind('keypress', (function(_this) {
+        return function(event) {
+          if (event.keyCode !== 13) {
+            return;
+          }
+          event.preventDefault();
+          return $(element).trigger('blur');
+        };
+      })(this));
+      element.bind("blur", function() {
+        return scope.$apply(function() {
+          console.log('test', [ngModel.$viewValue, original]);
+          if (ngModel.$viewValue !== original) {
+            return;
+          }
+          ngModel.$setViewValue(element.html());
+          element.addClass('changed');
+          return console.log('blur', ngModel.$viewValue);
+        });
+      });
+      ngModel.$render = (function(_this) {
+        return function() {
+          return element.html(ngModel.$viewValue);
+        };
+      })(this);
+      return ngModel.$render();
+    }
+  };
+});
+
 angular.module('fullscreen.tv').directive('filepicker', function($window, firebase, analytics, zencoder) {
   return {
     restrict: 'A',
@@ -140,6 +180,7 @@ angular.module('fullscreen.tv').directive('filepicker', function($window, fireba
         return _(inkBlob).each(function(file) {
           var filename;
           filename = getFilename(file.key);
+          file.displayName = filename;
           userUploads[filename] = file;
           return userUploads.$save(filename);
         });
@@ -203,7 +244,7 @@ angular.module('fullscreen.tv').directive('talkNerdyToMe', function($window) {
   return {
     restrict: 'A',
     link: function(scope, element, attrs) {
-      var accent, polyfill, utterance, _ref;
+      var accent, polyfill, speak, utterance, _ref;
       switch (attrs != null ? (_ref = attrs.accent) != null ? _ref.toLowerCase() : void 0 : void 0) {
         case 'en-us':
           accent = 'en-US';
@@ -241,15 +282,17 @@ angular.module('fullscreen.tv').directive('talkNerdyToMe', function($window) {
       };
       utterance = new polyfill.utterance();
       utterance.lang = accent;
+      console.log('accent', accent);
       utterance.volume = 1.0;
       utterance.rate = 1.2;
-      scope.speak = function(words) {
+      speak = function(words) {
+        console.log('speaking!');
         utterance.text = words;
         return polyfill.synthesis.speak(utterance);
       };
       if (attrs.talkNerdyToMe) {
         return angular.element(element).bind('click', function() {
-          return scope.speak(attrs.talkNerdyToMe);
+          return _.throttle(speak, 1000)(attrs.talkNerdyToMe);
         });
       }
     }

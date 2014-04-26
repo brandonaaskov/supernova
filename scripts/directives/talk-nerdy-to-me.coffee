@@ -19,12 +19,15 @@ angular.module('fullscreen.tv').directive 'talkNerdyToMe', ($window) ->
 
     utterance = new polyfill.utterance()
     utterance.lang = accent
+    console.log 'accent', accent
     utterance.volume = 1.0
     utterance.rate = 1.2
 
-    scope.speak = (words) ->
+    speak = (words) ->
+      console.log 'speaking!'
       utterance.text = words
       polyfill.synthesis.speak utterance
 
     if attrs.talkNerdyToMe
-      angular.element(element).bind 'click', -> scope.speak attrs.talkNerdyToMe
+      angular.element(element).bind 'click', ->
+        _.throttle(speak, 1000)(attrs.talkNerdyToMe)

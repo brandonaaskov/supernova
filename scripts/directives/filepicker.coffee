@@ -37,13 +37,15 @@ angular.module('fullscreen.tv').directive 'filepicker', ($window, firebase, anal
     saveUploads = (inkBlob) ->
       _(inkBlob).each (file) ->
         filename = getFilename(file.key)
-        userUploads[filename] = file
+        file.displayName = filename # add a display name property to the object
+        userUploads[filename] = file # add the file to the user's uploads
         userUploads.$save(filename)
 
     startJobs = (inkBlob) ->
       keys = _(inkBlob).pluck 'key'
       _(keys).each (filename) ->
         zencoder.createJob(filename).then (response) ->
+          # add zencoder job details to the upload item in firebase
           userUploads.$child(getFilename(filename)).$update({zencoder: response})
 
     $scope.pick = ->
