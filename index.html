@@ -19,7 +19,6 @@
   <script src="vendor/angularfire/angularfire.min.js"></script>
   <script src="vendor/filepicker/filepicker.min.js"></script> <!-- file uploader service -->
   <script src="vendor/videojs/dist/video-js/video.js"></script>
-  <script src="vendor/speech-synthesis/polyfill.min.js"></script>
   <script src="vendor/underscore/underscore.js"></script>
   <script src="vendor/jquery/dist/jquery.min.js"></script>
   <script src="build/templates.js"></script> <!-- views compiled into $templateCache -->
@@ -30,7 +29,7 @@
     <div class="jumbotron step">
       <h1
         class="clickable"
-        talk-nerdy-to-me="upload your crap"
+        speech="upload your crap"
       >
         Step 1: Upload
       </h1>
@@ -39,7 +38,7 @@
     </div>
 
     <div class="jumbotron step" ng-controller="uploadsController">
-      <h1 class="clickable" talk-nerdy-to-me="manage your pile of crap" accent="en-es">Step 2: Manage</h1>
+      <h1 class="clickable" speech="manage your pile of crap">Step 2: Manage</h1>
 
       <ol class="uploads">
         <li class="video" ng-repeat="video in userUploads">

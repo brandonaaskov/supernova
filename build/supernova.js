@@ -240,59 +240,47 @@ angular.module('fullscreen.tv').directive('player', function() {
   };
 });
 
-angular.module('fullscreen.tv').directive('talkNerdyToMe', function($window) {
+angular.module('fullscreen.tv').directive('speech', function($window) {
   return {
     restrict: 'A',
     link: function(scope, element, attrs) {
-      var accent, polyfill, speak, utterance, _ref;
-      switch (attrs != null ? (_ref = attrs.accent) != null ? _ref.toLowerCase() : void 0 : void 0) {
-        case 'en-us':
-          accent = 'en-US';
-          break;
-        case 'en-gb':
-          accent = 'en-GB';
-          break;
-        case 'en-es':
-          accent = 'en-ES';
-          break;
-        case 'fr-fr':
-          accent = 'fr-FR';
-          break;
-        case 'it-it':
-          accent = 'it-IT';
-          break;
-        case 'de-de':
-          accent = 'de-DE';
-          break;
-        case 'ja-jp':
-          accent = 'en-JP';
-          break;
-        case 'ko-kr':
-          accent = 'ko-KR';
-          break;
-        case 'zh-cn':
-          accent = 'zh-CN';
-          break;
-        default:
-          accent = 'en-US';
+      var getVoice, speak, synthesis, utterance;
+      synthesis = $window != null ? $window.speechSynthesis : void 0;
+      utterance = $window != null ? $window.SpeechSynthesisUtterance : void 0;
+      if (!(synthesis && utterance)) {
+        return;
       }
-      polyfill = {
-        synthesis: $window.speechSynthesis || $window.speechSynthesisPolyfill,
-        utterance: $window.SpeechSynthesisUtterance || $window.SpeechSynthesisUtterancePolyfill
+      synthesis.onvoiceschanged = (function(_this) {
+        return function() {
+          var voice;
+          utterance = new utterance();
+          voice = getVoice(attrs != null ? attrs.lang : void 0);
+          utterance.lang = _(voice).pluck('lang');
+          utterance.volume = 1.0;
+          utterance.rate = 1.2;
+          utterance.pitch = 1;
+          utterance.voiceURI = attrs != null ? attrs.voiceURI : void 0;
+          return utterance.voice = voice;
+        };
+      })(this);
+      getVoice = function(language) {
+        var voices;
+        voices = synthesis.getVoices();
+        if (!language) {
+          return _(voices).findWhere({
+            "default": true
+          });
+        }
       };
-      utterance = new polyfill.utterance();
-      utterance.lang = accent;
-      console.log('accent', accent);
-      utterance.volume = 1.0;
-      utterance.rate = 1.2;
+      console.log('utterance', utterance);
       speak = function(words) {
-        console.log('speaking!');
         utterance.text = words;
-        return polyfill.synthesis.speak(utterance);
+        return synthesis.speak(utterance);
       };
-      if (attrs.talkNerdyToMe) {
+      speak = _(speak).throttle(1000);
+      if (attrs.speech) {
         return angular.element(element).bind('click', function() {
-          return _.throttle(speak, 1000)(attrs.talkNerdyToMe);
+          return speak(attrs.speech);
         });
       }
     }
