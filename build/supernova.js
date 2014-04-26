@@ -244,45 +244,69 @@ angular.module('fullscreen.tv').directive('speech', function($window) {
   return {
     restrict: 'A',
     link: function(scope, element, attrs) {
-      var getVoice, speak, synthesis, utterance;
-      synthesis = $window != null ? $window.speechSynthesis : void 0;
-      utterance = $window != null ? $window.SpeechSynthesisUtterance : void 0;
-      if (!(synthesis && utterance)) {
+      var getVoice, speak, synthesis, synthesisUtterance, toggleSpeaking, utterance;
+      if (!($window != null ? $window.speechSynthesis : void 0)) {
         return;
       }
+      element.addClass('ba-speech');
+      synthesis = $window.speechSynthesis;
+      synthesisUtterance = $window.SpeechSynthesisUtterance;
+      utterance = new synthesisUtterance();
+      toggleSpeaking = function(flag) {
+        scope.speaking = flag;
+        return scope.$digest();
+      };
+      utterance.onstart = function() {
+        return toggleSpeaking(true);
+      };
+      utterance.onend = function() {
+        return toggleSpeaking(false);
+      };
+      utterance.onpause = function() {
+        return toggleSpeaking(false);
+      };
+      utterance.onresume = function() {
+        return toggleSpeaking(true);
+      };
       synthesis.onvoiceschanged = (function(_this) {
         return function() {
-          var voice;
-          utterance = new utterance();
-          voice = getVoice(attrs != null ? attrs.lang : void 0);
-          utterance.lang = _(voice).pluck('lang');
+          utterance.voice = getVoice(attrs != null ? attrs.language : void 0);
+          if (attrs.debug) {
+            console.log(utterance.voice);
+          }
+          utterance.voiceURI = utterance.voice.voiceURI;
+          utterance.lang = utterance.voice.lang;
           utterance.volume = 1.0;
           utterance.rate = 1.2;
-          utterance.pitch = 1;
-          utterance.voiceURI = attrs != null ? attrs.voiceURI : void 0;
-          return utterance.voice = voice;
+          return utterance.pitch = 1;
         };
       })(this);
       getVoice = function(language) {
-        var voices;
+        var override, systemDefault, voices;
         voices = synthesis.getVoices();
-        if (!language) {
-          return _(voices).findWhere({
-            "default": true
-          });
+        systemDefault = _(voices).findWhere({
+          "default": true
+        });
+        override = _(voices).findWhere({
+          lang: language
+        });
+        if (override) {
+          return override;
+        } else {
+          return systemDefault;
         }
       };
-      console.log('utterance', utterance);
       speak = function(words) {
+        if (!words) {
+          return;
+        }
         utterance.text = words;
         return synthesis.speak(utterance);
       };
-      speak = _(speak).throttle(1000);
-      if (attrs.speech) {
-        return angular.element(element).bind('click', function() {
-          return speak(attrs.speech);
-        });
-      }
+      return angular.element(element).bind('click', function() {
+        synthesis.cancel();
+        return speak(attrs.speech);
+      });
     }
   };
 });

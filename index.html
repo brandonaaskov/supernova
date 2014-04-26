@@ -38,11 +38,14 @@
     </div>
 
     <div class="jumbotron step" ng-controller="uploadsController">
-      <h1 class="clickable" speech="manage your pile of crap">Step 2: Manage</h1>
+      <h1 class="clickable"
+          speech="manage your pile of crap"
+          ng-class="{speaking: speaking}"
+      >Step 2: Manage</h1>
 
       <ol class="uploads">
         <li class="video" ng-repeat="video in userUploads">
-          <span class="filename" contenteditable ng-model="video.filename">{{video.filename}}</span>
+          <span class="filename" contenteditable ng-model="video.displayName">{{video.displayName}}</span>
         </li>
       </ol>
     </div>
