@@ -1,4 +1,20 @@
-angular.module('fullscreen.tv', ['ngCookies', 'templates', 'firebase']).run(function($cookies, analytics) {
+angular.module('fullscreen.tv', ['ngCookies', 'templates', 'firebase']).config(function() {
+  var mixins;
+  mixins = {
+    getFilename: function(key, dropExtension) {
+      var filename;
+      if (dropExtension == null) {
+        dropExtension = true;
+      }
+      filename = _.last(key.split('/'));
+      if (!dropExtension) {
+        return filename;
+      }
+      return _.first(filename.split('.'));
+    }
+  };
+  return _.mixin(mixins);
+}).run(function($cookies, analytics) {
   var guid, s4;
   s4 = function() {
     return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
@@ -138,7 +154,7 @@ angular.module('fullscreen.tv').directive('filepicker', function($window, fireba
       return scope.filepicker.setKey('AiCDu1zCuQQysPoX9Mb9bz');
     },
     controller: function($scope) {
-      var error, getFilename, options, saveUploads, startJobs, success;
+      var error, options, saveUploads, startJobs, success;
       options = {
         picker: {
           services: ['COMPUTER', 'DROPBOX', 'BOX', 'GOOGLE_DRIVE'],
@@ -158,21 +174,10 @@ angular.module('fullscreen.tv').directive('filepicker', function($window, fireba
       error = function(FPError) {
         return analytics.track('Upload: Error', FPError.toString());
       };
-      getFilename = function(key, dropExtension) {
-        var filename;
-        if (dropExtension == null) {
-          dropExtension = true;
-        }
-        filename = _.last(key.split("uploads/" + firebase.guid + "/"));
-        if (!dropExtension) {
-          return filename;
-        }
-        return _.first(filename.split('.'));
-      };
       saveUploads = function(inkBlob) {
         return _(inkBlob).each(function(file) {
           var filename;
-          filename = getFilename(file.key);
+          filename = _.getFilename(file.key);
           file.displayName = filename;
           firebase.userUploads[filename] = file;
           return firebase.userUploads.$save(filename);
@@ -181,12 +186,15 @@ angular.module('fullscreen.tv').directive('filepicker', function($window, fireba
       startJobs = function(inkBlob) {
         var keys;
         keys = _(inkBlob).pluck('key');
-        return _(keys).each(function(filename) {
-          return zencoder.createJob(filename).then(function(response) {
-            firebase.userUploads.$child(getFilename(filename)).$update({
+        return _(keys).each(function(filepath) {
+          var filename;
+          filename = _.getFilename(filepath);
+          console.log('filename', filename);
+          return zencoder.createJob(filepath).then(function(response) {
+            firebase.userUploads.$child(filename).$update({
               job: response.data.id
             });
-            return firebase.userEncodes.$child(getFilename(filename)).$update({
+            return firebase.userEncodes.$child(filename).$update({
               jobId: response.data.id,
               files: response.data.outputs
             });
@@ -411,15 +419,17 @@ angular.module('fullscreen.tv').service('zencoder', function($http, firebase) {
     read: '92cdc58ec35e590acb0980f75ddfa32c',
     full: '380e390b6b8fd2d600c9035db7d13c29'
   };
-  createJob = function(filename) {
-    return $http.post("" + baseUrl + "/jobs", getOutputs(filename));
+  createJob = function(filepath) {
+    return $http.post("" + baseUrl + "/jobs", getOutputs(filepath));
   };
   getJobProgress = function(jobId) {
     return $http.get("" + baseUrl + "/jobs/" + jobId + "/progress.json?api_key=" + keys.full);
   };
-  getOutputs = function(filename) {
+  getOutputs = function(filepath) {
+    var filename;
+    filename = _.getFilename(filepath);
     return {
-      input: "s3://uploads/" + guid + "/" + filename,
+      input: "s3://" + filepath,
       outputs: [
         {
           label: "low",

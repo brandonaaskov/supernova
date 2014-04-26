@@ -27,27 +27,24 @@ angular.module('fullscreen.tv').directive 'filepicker', ($window, firebase, anal
     error = (FPError) ->
       analytics.track 'Upload: Error', FPError.toString()
 
-    getFilename = (key, dropExtension = true) ->
-      filename = _.last key.split("uploads/#{firebase.guid}/")
-      return filename unless dropExtension
-      _.first filename.split('.')
-
     saveUploads = (inkBlob) ->
       _(inkBlob).each (file) ->
-        filename = getFilename(file.key)
+        filename = _.getFilename(file.key)
         file.displayName = filename # add a display name property to the object
         firebase.userUploads[filename] = file # add the file to the user's uploads
         firebase.userUploads.$save(filename)
 
     startJobs = (inkBlob) ->
       keys = _(inkBlob).pluck 'key'
-      _(keys).each (filename) ->
-        zencoder.createJob(filename).then (response) ->
+      _(keys).each (filepath) ->
+        filename = _.getFilename(filepath)
+        console.log 'filename', filename
+        zencoder.createJob(filepath).then (response) ->
           firebase.userUploads
-            .$child(getFilename(filename))
+            .$child(filename)
             .$update({job: response.data.id})
           firebase.userEncodes
-            .$child(getFilename(filename))
+            .$child(filename)
             .$update({jobId: response.data.id, files: response.data.outputs})
 
     $scope.pick = ->
