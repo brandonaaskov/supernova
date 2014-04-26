@@ -104,8 +104,6 @@ angular.module('fullscreen.tv').directive('contenteditable', function() {
       onBlur: '&'
     },
     link: function(scope, element, attrs, ngModel) {
-      var original;
-      original = ngModel.$viewValue;
       element.bind('keypress', (function(_this) {
         return function(event) {
           if (event.keyCode !== 13) {
@@ -117,13 +115,9 @@ angular.module('fullscreen.tv').directive('contenteditable', function() {
       })(this));
       element.bind("blur", function() {
         return scope.$apply(function() {
-          console.log('test', [ngModel.$viewValue, original]);
-          if (ngModel.$viewValue !== original) {
-            return;
-          }
           ngModel.$setViewValue(element.html());
-          element.addClass('changed');
-          return console.log('blur', ngModel.$viewValue);
+          element.addClass('edited');
+          return scope.onBlur();
         });
       });
       ngModel.$render = (function(_this) {
@@ -144,8 +138,7 @@ angular.module('fullscreen.tv').directive('filepicker', function($window, fireba
       return scope.filepicker.setKey('AiCDu1zCuQQysPoX9Mb9bz');
     },
     controller: function($scope) {
-      var error, getFilename, options, saveUploads, startJobs, success, userUploads;
-      userUploads = firebase.uploads.$child(firebase.guid);
+      var error, getFilename, options, saveUploads, startJobs, success;
       options = {
         picker: {
           services: ['COMPUTER', 'DROPBOX', 'BOX', 'GOOGLE_DRIVE'],
@@ -181,8 +174,8 @@ angular.module('fullscreen.tv').directive('filepicker', function($window, fireba
           var filename;
           filename = getFilename(file.key);
           file.displayName = filename;
-          userUploads[filename] = file;
-          return userUploads.$save(filename);
+          firebase.userUploads[filename] = file;
+          return firebase.userUploads.$save(filename);
         });
       };
       startJobs = function(inkBlob) {
@@ -190,8 +183,12 @@ angular.module('fullscreen.tv').directive('filepicker', function($window, fireba
         keys = _(inkBlob).pluck('key');
         return _(keys).each(function(filename) {
           return zencoder.createJob(filename).then(function(response) {
-            return userUploads.$child(getFilename(filename)).$update({
-              zencoder: response
+            firebase.userUploads.$child(getFilename(filename)).$update({
+              job: response.data.id
+            });
+            return firebase.userEncodes.$child(getFilename(filename)).$update({
+              jobId: response.data.id,
+              files: response.data.outputs
             });
           });
         });
@@ -340,14 +337,19 @@ angular.module('fullscreen.tv').constant('config', {
   firebase: {
     "default": 'https://supernova.firebaseio.com/',
     uploads: 'https://supernova.firebaseio.com/uploads',
+    encodes: 'https://supernova.firebaseio.com/encodes',
     clock: 'https://supernova.firebaseio.com/.info/serverTimeOffset'
   }
 });
 
 angular.module('fullscreen.tv').service('firebase', function($firebase, $cookies, config, $rootScope, $q) {
-  var clock, getServerTime, guid, publicAPI;
+  var clock, encodes, getServerTime, guid, publicAPI, uploads, userEncodes, userUploads;
   clock = new Firebase(config.firebase.clock);
   guid = $cookies.guid;
+  uploads = $firebase(new Firebase(config.firebase.uploads));
+  userUploads = uploads.$child(guid);
+  encodes = $firebase(new Firebase(config.firebase.encodes));
+  userEncodes = encodes.$child(guid);
   getServerTime = function() {
     var deferred;
     deferred = $q.defer();
@@ -360,7 +362,8 @@ angular.module('fullscreen.tv').service('firebase', function($firebase, $cookies
   };
   return publicAPI = {
     uploads: $firebase(new Firebase(config.firebase.uploads)),
-    userUploads: $firebase(new Firebase("" + config.firebase.uploads + "/" + guid)),
+    userUploads: userUploads,
+    userEncodes: userEncodes,
     getServerTime: getServerTime,
     guid: guid
   };

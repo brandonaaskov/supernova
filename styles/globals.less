@@ -1,5 +1,7 @@
 @import "../vendor/less-elements/elements";
 
+@speakingColor: dodgerblue;
+
 .clickable {
   cursor: pointer;
 }
@@ -8,6 +10,6 @@
   .transition(.3s, ease-in-out);
 
   &.speaking {
-    color: dodgerblue;
+    color: @speakingColor;
   }
 }

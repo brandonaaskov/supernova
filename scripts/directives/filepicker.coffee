@@ -5,8 +5,6 @@ angular.module('fullscreen.tv').directive 'filepicker', ($window, firebase, anal
     scope.filepicker.setKey 'AiCDu1zCuQQysPoX9Mb9bz'
 
   controller: ($scope) ->
-    userUploads = firebase.uploads.$child(firebase.guid)
-
     options =
       picker:
         services: [
@@ -38,15 +36,19 @@ angular.module('fullscreen.tv').directive 'filepicker', ($window, firebase, anal
       _(inkBlob).each (file) ->
         filename = getFilename(file.key)
         file.displayName = filename # add a display name property to the object
-        userUploads[filename] = file # add the file to the user's uploads
-        userUploads.$save(filename)
+        firebase.userUploads[filename] = file # add the file to the user's uploads
+        firebase.userUploads.$save(filename)
 
     startJobs = (inkBlob) ->
       keys = _(inkBlob).pluck 'key'
       _(keys).each (filename) ->
         zencoder.createJob(filename).then (response) ->
-          # add zencoder job details to the upload item in firebase
-          userUploads.$child(getFilename(filename)).$update({zencoder: response})
+          firebase.userUploads
+            .$child(getFilename(filename))
+            .$update({job: response.data.id})
+          firebase.userEncodes
+            .$child(getFilename(filename))
+            .$update({jobId: response.data.id, files: response.data.outputs})
 
     $scope.pick = ->
       $scope.filepicker.pickAndStore options.picker, options.store, success, error

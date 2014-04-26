@@ -7,4 +7,5 @@ angular.module('fullscreen.tv').constant 'config',
   firebase:
     default: 'https://supernova.firebaseio.com/'
     uploads: 'https://supernova.firebaseio.com/uploads'
+    encodes: 'https://supernova.firebaseio.com/encodes'
     clock: 'https://supernova.firebaseio.com/.info/serverTimeOffset'

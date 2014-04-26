@@ -4,8 +4,6 @@ angular.module('fullscreen.tv').directive 'contenteditable', ->
   scope:
     onBlur: '&'
   link: (scope, element, attrs, ngModel) ->
-    original = ngModel.$viewValue
-    # view -> model
     element.bind 'keypress', (event) =>
       return unless event.keyCode is 13 # enter key
       event.preventDefault()
@@ -13,11 +11,9 @@ angular.module('fullscreen.tv').directive 'contenteditable', ->
 
     element.bind "blur", ->
       scope.$apply ->
-        console.log 'test', [ngModel.$viewValue, original]
-        return if ngModel.$viewValue isnt original
-        ngModel.$setViewValue element.html()
-        element.addClass 'changed'
-        console.log 'blur', ngModel.$viewValue
+        ngModel.$setViewValue element.html() # view -> model
+        element.addClass 'edited'
+        scope.onBlur()
 
     # model -> view
     ngModel.$render = =>
