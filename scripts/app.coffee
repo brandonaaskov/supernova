@@ -1,5 +1,6 @@
 angular.module('fullscreen.tv', [
   'ngCookies'
+  'ngGrid'
   'templates'
   'firebase'
 ])

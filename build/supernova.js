@@ -1,4 +1,4 @@
-angular.module('fullscreen.tv', ['ngCookies', 'templates', 'firebase']).config(function() {
+angular.module('fullscreen.tv', ['ngCookies', 'ngGrid', 'templates', 'firebase']).config(function() {
   var mixins;
   mixins = {
     getFilename: function(key, dropExtension) {
@@ -108,8 +108,34 @@ angular.module('fullscreen.tv').directive('uploadsManager', function($http, $tim
   };
 });
 
-angular.module('fullscreen.tv').controller('uploadsController', function($scope, firebase) {
-  return $scope.userUploads = firebase.userUploads;
+angular.module('fullscreen.tv').controller('uploadsController', function($scope, firebase, $filter) {
+  $scope.userUploads = [];
+  $scope.gridOptions = {
+    data: 'userUploads',
+    columnDefs: [
+      {
+        field: 'displayName',
+        displayName: 'Name'
+      }, {
+        field: 'filename',
+        displayName: 'Filename'
+      }, {
+        field: 'job',
+        displayName: 'Zencoder Job'
+      }, {
+        field: 'size',
+        displayName: 'Size'
+      }
+    ]
+  };
+  firebase.userUploads.$on('loaded', function(data) {
+    $filter('orderByPriority')(data);
+    $scope.userUploads = _(data).toArray();
+    console.log('$scope.userUploads', $scope.userUploads);
+    return $scope.$digest();
+  });
+  console.log('userUploads (firebase)', firebase.userUploads);
+  return console.log('userUploads', $scope.userUploads);
 });
 
 angular.module('fullscreen.tv').directive('contenteditable', function() {

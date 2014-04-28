@@ -26,9 +26,15 @@
 .ba-speech.speaking {
   color: #1e90ff;
 }
+
+.upload {
+  color: black;
+}
+
 .uploads .video .changed {
   background-color: #ffff00;
 }
-.upload {
-  color: black;
+
+.uploads .grid {
+  font-size: 14px;
 }
