@@ -8,6 +8,8 @@ angular.module('fullscreen.tv').service 'zencoder', ($http, firebase) ->
   createJob = (filepath) ->
     $http.post "#{baseUrl}/jobs", getOutputs(filepath)
 
+  
+
 #  getS3Url = (filename, extension, bucket = 'fullscreen-tv') ->
 #    "#{_.removeExtension("s3://#{bucket}/encoded/#{filename}")}.#{extension}"
 
@@ -25,7 +27,8 @@ angular.module('fullscreen.tv').service 'zencoder', ($http, firebase) ->
 
   getOutputs = (filepath) ->
     filename = _.getFilename filepath
-    input: "s3://#{filepath}"
+    baseUrl = "s3://fullscreen-tv"
+    input: "#{baseUrl}/#{filepath}"
     outputs: [
       {
         label: "low"
@@ -35,7 +38,7 @@ angular.module('fullscreen.tv').service 'zencoder', ($http, firebase) ->
         decoder_buffer_size: 1200
         audio_sample_rate: 44100
         height: "288"
-        url: "s3://encodes/#{guid}/#{filename}"
+        url: "#{baseUrl}/encodes/#{guid}/#{filename}-low.mp4"
         h264_reference_frames: 1
         forced_keyframe_rate: "0.1"
         audio_bitrate: 56
@@ -50,7 +53,7 @@ angular.module('fullscreen.tv').service 'zencoder', ($http, firebase) ->
         decoder_buffer_size: 6000
         audio_sample_rate: 44100
         height: "432"
-        url: "s3://encodes/#{guid}/#{filename}"
+        url: "#{baseUrl}/encodes/#{guid}/#{filename}-high.mp4"
         h264_reference_frames: "auto"
         h264_profile: "main"
         forced_keyframe_rate: "0.1"
@@ -60,7 +63,7 @@ angular.module('fullscreen.tv').service 'zencoder', ($http, firebase) ->
       {
         source: "low"
         segment_video_snapshots: "true"
-        url: "s3://encodes/#{guid}/#{filename}"
+        url: "#{baseUrl}/encodes/#{guid}/#{filename}-audio-only.m4a"
         copy_audio: "true"
         skip_video: "true"
         label: "hls-audio-only"
@@ -73,7 +76,7 @@ angular.module('fullscreen.tv').service 'zencoder', ($http, firebase) ->
         format: "ts"
         copy_audio: "true"
         copy_video: "true"
-        url: "s3://encodes/#{guid}/#{filename}"
+        url: "#{baseUrl}/encodes/#{guid}/#{filename}-hls-low.mp4"
         label: "hls-low"
         type: "segmented"
         rrs: true
@@ -83,7 +86,7 @@ angular.module('fullscreen.tv').service 'zencoder', ($http, firebase) ->
         format: "ts"
         copy_audio: "true"
         copy_video: "true"
-        url: "s3://encodes/#{guid}/#{filename}"
+        url: "#{baseUrl}/encodes/#{guid}/#{filename}-hls-high.mp4"
         label: "hls-high"
         type: "segmented"
         rrs: true
@@ -91,20 +94,20 @@ angular.module('fullscreen.tv').service 'zencoder', ($http, firebase) ->
       {
         streams: [
           {
-            path: "hls-low/#{filename}_hls-low.m3u8"
+            path: "hls-low/#{filename}-hls-low.m3u8"
             bandwidth: 256
           }
           {
-            path: "hls-audio-only/#{filename}_hls-audio-only.m3u8"
+            path: "hls-audio-only/#{filename}-hls-audio-only.m3u8"
             bandwidth: 56
           }
           {
-            path: "hls-high/#{filename}_hls-high.m3u8"
+            path: "hls-high/#{filename}-hls-high.m3u8"
             bandwidth: 1056
           }
         ]
         type: "playlist"
-        url: "s3://encodes/#{guid}/#{filename}"
+        url: "#{baseUrl}/encodes/#{guid}/#{filename}.m3u8"
       }
     ]
 

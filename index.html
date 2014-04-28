@@ -26,6 +26,11 @@
 </head>
 <body ng-app="fullscreen.tv">
   <div class="container">
+    <i class="speech-toggle clickable glyphicon"
+       ng-class="{'glyphicon-volume-up': speechEnabled, 'glyphicon-volume-off': !speechEnabled}"
+       speech-toggle
+    ></i>
+
     <div class="jumbotron step">
       <h1
         class="clickable"
@@ -40,7 +45,6 @@
     <div class="jumbotron step" ng-controller="uploadsController">
       <h1 class="clickable"
           speech="manage your pile of crap"
-          ng-class="{speaking: speaking}"
       >Step 2: Manage</h1>
 
       <ol class="uploads">

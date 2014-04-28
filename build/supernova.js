@@ -245,7 +245,42 @@ angular.module('fullscreen.tv').directive('player', function() {
   };
 });
 
-angular.module('fullscreen.tv').directive('speech', function($window) {
+angular.module('fullscreen.tv').directive('speechToggle', function($rootScope) {
+  return {
+    link: function(scope, element) {
+      var toggle;
+      scope.speechEnabled = true;
+      scope.disableSpeech = function() {
+        return $rootScope.$broadcast('ba-speech-disable');
+      };
+      scope.enableSpeech = function() {
+        return $rootScope.$broadcast('ba-speech-enable');
+      };
+      $rootScope.$on('ba-speech-disable', function() {
+        scope.speechEnabled = false;
+        return scope.$digest();
+      });
+      $rootScope.$on('ba-speech-enable', function() {
+        scope.speechEnabled = true;
+        return scope.$digest();
+      });
+      toggle = function() {
+        if (scope.speechEnabled) {
+          return $rootScope.$broadcast('ba-speech-disable');
+        } else {
+          return $rootScope.$broadcast('ba-speech-enable');
+        }
+      };
+      return element.bind('click', (function(_this) {
+        return function() {
+          return toggle();
+        };
+      })(this));
+    }
+  };
+});
+
+angular.module('fullscreen.tv').directive('speech', function($window, $rootScope) {
   return {
     restrict: 'A',
     link: function(scope, element, attrs) {
@@ -253,11 +288,17 @@ angular.module('fullscreen.tv').directive('speech', function($window) {
       if (!($window != null ? $window.speechSynthesis : void 0)) {
         return;
       }
+      scope.enabled = true;
       element.addClass('ba-speech');
       synthesis = $window.speechSynthesis;
       synthesisUtterance = $window.SpeechSynthesisUtterance;
       utterance = new synthesisUtterance();
       toggleSpeaking = function(flag) {
+        if (flag) {
+          element.addClass('speaking');
+        } else {
+          element.removeClass('speaking');
+        }
         scope.speaking = flag;
         return scope.$digest();
       };
@@ -302,15 +343,22 @@ angular.module('fullscreen.tv').directive('speech', function($window) {
         }
       };
       speak = function(words) {
-        if (!words) {
+        if (!(words && scope.enabled)) {
           return;
         }
         utterance.text = words;
         return synthesis.speak(utterance);
       };
-      return angular.element(element).bind('click', function() {
+      angular.element(element).bind('click', function() {
         synthesis.cancel();
         return speak(attrs.speech);
+      });
+      $rootScope.$on('ba-speech-disable', function() {
+        synthesis.cancel();
+        return scope.enabled = false;
+      });
+      return $rootScope.$on('ba-speech-enable', function() {
+        return scope.enabled = true;
       });
     }
   };
@@ -428,8 +476,9 @@ angular.module('fullscreen.tv').service('zencoder', function($http, firebase) {
   getOutputs = function(filepath) {
     var filename;
     filename = _.getFilename(filepath);
+    baseUrl = "s3://fullscreen-tv";
     return {
-      input: "s3://" + filepath,
+      input: "" + baseUrl + "/" + filepath,
       outputs: [
         {
           label: "low",
@@ -439,7 +488,7 @@ angular.module('fullscreen.tv').service('zencoder', function($http, firebase) {
           decoder_buffer_size: 1200,
           audio_sample_rate: 44100,
           height: "288",
-          url: "s3://encodes/" + guid + "/" + filename,
+          url: "" + baseUrl + "/encodes/" + guid + "/" + filename + "-low.mp4",
           h264_reference_frames: 1,
           forced_keyframe_rate: "0.1",
           audio_bitrate: 56,
@@ -453,7 +502,7 @@ angular.module('fullscreen.tv').service('zencoder', function($http, firebase) {
           decoder_buffer_size: 6000,
           audio_sample_rate: 44100,
           height: "432",
-          url: "s3://encodes/" + guid + "/" + filename,
+          url: "" + baseUrl + "/encodes/" + guid + "/" + filename + "-high.mp4",
           h264_reference_frames: "auto",
           h264_profile: "main",
           forced_keyframe_rate: "0.1",
@@ -462,7 +511,7 @@ angular.module('fullscreen.tv').service('zencoder', function($http, firebase) {
         }, {
           source: "low",
           segment_video_snapshots: "true",
-          url: "s3://encodes/" + guid + "/" + filename,
+          url: "" + baseUrl + "/encodes/" + guid + "/" + filename + "-audio-only.m4a",
           copy_audio: "true",
           skip_video: "true",
           label: "hls-audio-only",
@@ -474,7 +523,7 @@ angular.module('fullscreen.tv').service('zencoder', function($http, firebase) {
           format: "ts",
           copy_audio: "true",
           copy_video: "true",
-          url: "s3://encodes/" + guid + "/" + filename,
+          url: "" + baseUrl + "/encodes/" + guid + "/" + filename + "-hls-low.mp4",
           label: "hls-low",
           type: "segmented",
           rrs: true
@@ -483,25 +532,25 @@ angular.module('fullscreen.tv').service('zencoder', function($http, firebase) {
           format: "ts",
           copy_audio: "true",
           copy_video: "true",
-          url: "s3://encodes/" + guid + "/" + filename,
+          url: "" + baseUrl + "/encodes/" + guid + "/" + filename + "-hls-high.mp4",
           label: "hls-high",
           type: "segmented",
           rrs: true
         }, {
           streams: [
             {
-              path: "hls-low/" + filename + "_hls-low.m3u8",
+              path: "hls-low/" + filename + "-hls-low.m3u8",
               bandwidth: 256
             }, {
-              path: "hls-audio-only/" + filename + "_hls-audio-only.m3u8",
+              path: "hls-audio-only/" + filename + "-hls-audio-only.m3u8",
               bandwidth: 56
             }, {
-              path: "hls-high/" + filename + "_hls-high.m3u8",
+              path: "hls-high/" + filename + "-hls-high.m3u8",
               bandwidth: 1056
             }
           ],
           type: "playlist",
-          url: "s3://encodes/" + guid + "/" + filename
+          url: "" + baseUrl + "/encodes/" + guid + "/" + filename + ".m3u8"
         }
       ]
     };
