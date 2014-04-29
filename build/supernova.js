@@ -26,6 +26,8 @@ angular.module('fullscreen.tv', ['ngCookies', 'ngGrid', 'templates', 'firebase']
     $cookies.guid = guid();
   }
   return analytics.identify($cookies.guid);
+}).run(function($rootScope, auth) {
+  return $rootScope.login = auth.login;
 });
 
 angular.module('fullscreen.tv').directive('upload', function($fileUploader, $location) {
@@ -108,7 +110,7 @@ angular.module('fullscreen.tv').directive('uploadsManager', function($http, $tim
   };
 });
 
-angular.module('fullscreen.tv').controller('uploadsController', function($scope, firebase, $filter) {
+angular.module('fullscreen.tv').controller('uploadsController', function($scope, firebase, $filter, auth) {
   $scope.userUploads = [];
   $scope.gridOptions = {
     data: 'userUploads',
@@ -128,14 +130,12 @@ angular.module('fullscreen.tv').controller('uploadsController', function($scope,
       }
     ]
   };
-  firebase.userUploads.$on('loaded', function(data) {
+  return firebase.userUploads.$on('loaded', function(data) {
+    console.log('test', firebase.userUploads);
     $filter('orderByPriority')(data);
     $scope.userUploads = _(data).toArray();
-    console.log('$scope.userUploads', $scope.userUploads);
     return $scope.$digest();
   });
-  console.log('userUploads (firebase)', firebase.userUploads);
-  return console.log('userUploads', $scope.userUploads);
 });
 
 angular.module('fullscreen.tv').directive('contenteditable', function() {
@@ -275,6 +275,7 @@ angular.module('fullscreen.tv').directive('speechToggle', function($rootScope) {
   return {
     link: function(scope, element) {
       var toggle;
+      scope.speaking = false;
       scope.speechEnabled = true;
       scope.disableSpeech = function() {
         return $rootScope.$broadcast('ba-speech-disable');
@@ -289,6 +290,10 @@ angular.module('fullscreen.tv').directive('speechToggle', function($rootScope) {
       $rootScope.$on('ba-speech-enable', function() {
         scope.speechEnabled = true;
         return scope.$digest();
+      });
+      $rootScope.$on('ba-speech-speaking', function(isSpeaking) {
+        console.log('asdfsadfsadf', isSpeaking);
+        return scope.speaking = isSpeaking;
       });
       toggle = function() {
         if (scope.speechEnabled) {
@@ -326,6 +331,9 @@ angular.module('fullscreen.tv').directive('speech', function($window, $rootScope
           element.removeClass('speaking');
         }
         scope.speaking = flag;
+        $rootScope.$broadcast('ba-speech-speaking', {
+          speaking: scope.speaking
+        });
         return scope.$digest();
       };
       utterance.onstart = function() {
@@ -409,6 +417,71 @@ angular.module('fullscreen.tv').factory('analytics', function() {
   });
 });
 
+angular.module('fullscreen.tv').service('auth', function($firebase, $firebaseSimpleLogin, $cookies, config) {
+  var auth, hasAccount, login, updateBasic, updateComplete, updateUser, user;
+  auth = $firebaseSimpleLogin(new Firebase(config.firebase["default"]));
+  user = {
+    complete: $firebase(new Firebase("" + config.firebase.users + "/complete/" + $cookies.guid)),
+    basic: $firebase(new Firebase("" + config.firebase.users + "/basic/" + $cookies.guid))
+  };
+  login = function(service) {
+    switch (service) {
+      case 'facebook':
+        console.log('config', config.firebase.auth.facebook);
+        return auth.$login('facebook', config.firebase.auth.facebook).then(function(providerDetails) {
+          return updateUser(providerDetails);
+        });
+      case 'github':
+        return auth.$login('github', config.firebase.auth.github).then(function(providerDetails) {
+          return updateUser(providerDetails);
+        });
+      case 'twitter':
+        return auth.$login('twitter', config.firebase.auth.twitter).then(function(providerDetails) {
+          return updateUser(providerDetails);
+        });
+    }
+  };
+  hasAccount = function() {
+    if (!user) {
+      return false;
+    }
+    return _.has(user.complete, 'github') || _.has(user.complete, 'facebook') || _.has(user.complete, 'twitter');
+  };
+  updateUser = function(providerDetails) {
+    updateComplete(providerDetails);
+    return updateBasic();
+  };
+  updateComplete = function(providerDetails) {
+    user.complete[providerDetails.provider] = providerDetails;
+    return user.complete.$save();
+  };
+  updateBasic = function() {
+    var merged, _ref, _ref1, _ref2, _ref3;
+    merged = _.chain({}).defaults((_ref2 = user.complete) != null ? _ref2.twitter : void 0).defaults((_ref1 = user.complete) != null ? _ref1.facebook : void 0).defaults((_ref = user.complete) != null ? _ref.github : void 0).value();
+    user.basic.guid = $cookies.guid;
+    user.basic.name = merged != null ? merged.displayName : void 0;
+    user.basic.email = merged != null ? merged.email : void 0;
+    user.basic.imageUrl = merged != null ? merged.avatar_url : void 0;
+    user.basic.location = _.isString(merged != null ? merged.location : void 0) ? merged != null ? merged.location : void 0 : (_ref3 = merged.location) != null ? _ref3.name : void 0;
+    user.basic.gender = merged != null ? merged.gender : void 0;
+    user.basic.profileUrl = merged != null ? merged.profileUrl : void 0;
+    user.basic.github = _.has(user.complete, 'github');
+    user.basic.facebook = _.has(user.complete, 'facebook');
+    user.basic.twitter = _.has(user.complete, 'twitter');
+    return user.basic.$save();
+  };
+  return {
+    login: login,
+    hasAccount: hasAccount,
+    user: user.basic,
+    getCurrentUser: function() {
+      return auth.$getCurrentUser().then(function(user) {
+        return user;
+      });
+    }
+  };
+});
+
 angular.module('fullscreen.tv').constant('config', {
   env: 'development',
   zencoder: {
@@ -420,7 +493,21 @@ angular.module('fullscreen.tv').constant('config', {
     "default": 'https://supernova.firebaseio.com/',
     uploads: 'https://supernova.firebaseio.com/uploads',
     encodes: 'https://supernova.firebaseio.com/encodes',
-    clock: 'https://supernova.firebaseio.com/.info/serverTimeOffset'
+    users: 'https://supernova.firebaseio.com/users',
+    clock: 'https://supernova.firebaseio.com/.info/serverTimeOffset',
+    auth: {
+      facebook: {
+        scope: 'user_birthday,friends_birthday',
+        rememberMe: true
+      },
+      github: {
+        scope: 'user:email',
+        rememberMe: true
+      },
+      twitter: {
+        rememberMe: true
+      }
+    }
   }
 });
 
@@ -442,6 +529,7 @@ angular.module('fullscreen.tv').service('firebase', function($firebase, $cookies
     });
     return deferred.promise;
   };
+  window.test = $firebase;
   return publicAPI = {
     uploads: $firebase(new Firebase(config.firebase.uploads)),
     userUploads: userUploads,

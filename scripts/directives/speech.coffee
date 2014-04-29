@@ -13,6 +13,7 @@ angular.module('fullscreen.tv').directive 'speech', ($window, $rootScope) ->
     toggleSpeaking = (flag) ->
       if flag then element.addClass 'speaking' else element.removeClass 'speaking'
       scope.speaking = flag
+      $rootScope.$broadcast 'ba-speech-speaking', { speaking: scope.speaking }
       scope.$digest()
 
     # listeners for the utterance so that we know when speaking is happening

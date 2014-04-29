@@ -20,6 +20,7 @@
   <!-- the firebase -->
   <script src="vendor/firebase/firebase.js"></script>
   <script src="vendor/angularfire/angularfire.min.js"></script>
+  <script src="vendor/firebase-simple-login/firebase-simple-login.js"></script>
 
   <!-- ui/ux stuff -->
   <script src="vendor/ng-grid/ng-grid-2.0.10.min.js"></script>
@@ -37,8 +38,21 @@
 </head>
 <body ng-app="fullscreen.tv">
   <div class="container">
+
+    <nav class="navbar">
+      <ul class="nav nav-pills">
+        <li class="clickable"><a ng-click="login('facebook')">Facebook</a></li>
+        <li class="clickable"><a ng-click="login('twitter')">Twitter</a></li>
+        <li class="clickable"><a ng-click="login('github')">Github</a></li>
+      </ul>
+    </nav>
+
     <i class="speech-toggle clickable glyphicon"
-       ng-class="{'glyphicon-volume-up': speechEnabled, 'glyphicon-volume-off': !speechEnabled}"
+       ng-class="{
+          'glyphicon-volume-up': speechEnabled,
+          'glyphicon-volume-off': !speechEnabled,
+          'speaking': speaking
+        }"
        speech-toggle
     ></i>
 

@@ -18,3 +18,6 @@ angular.module('fullscreen.tv', [
   unless $cookies.guid then $cookies.guid = guid()
 
   analytics.identify $cookies.guid
+
+.run ($rootScope, auth) ->
+  $rootScope.login = auth.login

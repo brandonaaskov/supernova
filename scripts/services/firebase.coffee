@@ -14,6 +14,8 @@ angular.module('fullscreen.tv').service 'firebase', ($firebase, $cookies, config
       deferred.resolve offset
     return deferred.promise
 
+  window.test = $firebase
+
   return publicAPI =
     uploads: $firebase new Firebase config.firebase.uploads
     userUploads: userUploads
