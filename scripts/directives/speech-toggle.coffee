@@ -14,7 +14,6 @@ angular.module('fullscreen.tv').directive 'speechToggle', ($rootScope) ->
       scope.$digest()
 
     $rootScope.$on 'ba-speech-speaking', (isSpeaking) ->
-      console.log 'asdfsadfsadf', isSpeaking
       scope.speaking = isSpeaking
 
     toggle = ->

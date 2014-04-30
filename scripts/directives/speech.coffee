@@ -1,4 +1,4 @@
-angular.module('fullscreen.tv').directive 'speech', ($window, $rootScope) ->
+angular.module('fullscreen.tv').directive 'speech', ($window) ->
   restrict: 'A'
   link: (scope, element, attrs) ->
     return unless $window?.speechSynthesis
@@ -13,7 +13,7 @@ angular.module('fullscreen.tv').directive 'speech', ($window, $rootScope) ->
     toggleSpeaking = (flag) ->
       if flag then element.addClass 'speaking' else element.removeClass 'speaking'
       scope.speaking = flag
-      $rootScope.$broadcast 'ba-speech-speaking', { speaking: scope.speaking }
+      scope.$broadcast 'ba-speech-speaking', { speaking: scope.speaking }
       scope.$digest()
 
     # listeners for the utterance so that we know when speaking is happening
@@ -51,8 +51,7 @@ angular.module('fullscreen.tv').directive 'speech', ($window, $rootScope) ->
       synthesis.cancel()
       speak attrs.speech
 
-    $rootScope.$on 'ba-speech-disable', ->
+    scope.$on 'ba-speech-disable', ->
       synthesis.cancel()
       scope.enabled = false
-    $rootScope.$on 'ba-speech-enable', ->
-      scope.enabled = true
+    scope.$on 'ba-speech-enable', -> scope.enabled = true
