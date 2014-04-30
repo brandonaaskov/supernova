@@ -7,14 +7,16 @@ angular.module('fullscreen.tv').service 'auth', ($firebase, $firebaseSimpleLogin
   login = (service) ->
     switch service
       when 'facebook'
-        console.log 'config', config.firebase.auth.facebook
         auth.$login('facebook', config.firebase.auth.facebook).then (providerDetails) ->
+          console.log 'facebook', providerDetails
           updateUser(providerDetails)
       when 'github'
         auth.$login('github', config.firebase.auth.github).then (providerDetails) ->
+          console.log 'github', providerDetails
           updateUser(providerDetails)
       when 'twitter'
         auth.$login('twitter', config.firebase.auth.twitter).then (providerDetails) ->
+          console.log 'twitter', providerDetails
           updateUser(providerDetails)
 
   hasAccount = ->
@@ -48,9 +50,8 @@ angular.module('fullscreen.tv').service 'auth', ($firebase, $firebaseSimpleLogin
     user.basic.twitter = _.has(user.complete, 'twitter')
     user.basic.$save()
 
-  return {
+  return publicAPI =
     login: login
     hasAccount: hasAccount
     user: user.basic
     getCurrentUser: -> auth.$getCurrentUser().then (user) -> return user
-  }

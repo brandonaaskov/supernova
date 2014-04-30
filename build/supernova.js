@@ -1,4 +1,4 @@
-angular.module('fullscreen.tv', ['ngCookies', 'ngGrid', 'templates', 'firebase']).config(function() {
+angular.module('fullscreen.tv', ['ngCookies', 'templates', 'firebase']).config(function() {
   var mixins;
   mixins = {
     getFilename: function(key, dropExtension) {
@@ -110,7 +110,7 @@ angular.module('fullscreen.tv').directive('uploadsManager', function($http, $tim
   };
 });
 
-angular.module('fullscreen.tv').controller('uploadsController', function($scope, firebase, $filter, auth) {
+angular.module('fullscreen.tv').controller('uploadsController', function($scope, firebase) {
   $scope.userUploads = [];
   $scope.gridOptions = {
     data: 'userUploads',
@@ -130,12 +130,7 @@ angular.module('fullscreen.tv').controller('uploadsController', function($scope,
       }
     ]
   };
-  return firebase.userUploads.$on('loaded', function(data) {
-    console.log('test', firebase.userUploads);
-    $filter('orderByPriority')(data);
-    $scope.userUploads = _(data).toArray();
-    return $scope.$digest();
-  });
+  return $scope.userUploads = firebase.userUploads;
 });
 
 angular.module('fullscreen.tv').directive('contenteditable', function() {
@@ -292,7 +287,6 @@ angular.module('fullscreen.tv').directive('speechToggle', function($rootScope) {
         return scope.$digest();
       });
       $rootScope.$on('ba-speech-speaking', function(isSpeaking) {
-        console.log('asdfsadfsadf', isSpeaking);
         return scope.speaking = isSpeaking;
       });
       toggle = function() {
@@ -311,7 +305,7 @@ angular.module('fullscreen.tv').directive('speechToggle', function($rootScope) {
   };
 });
 
-angular.module('fullscreen.tv').directive('speech', function($window, $rootScope) {
+angular.module('fullscreen.tv').directive('speech', function($window) {
   return {
     restrict: 'A',
     link: function(scope, element, attrs) {
@@ -331,7 +325,7 @@ angular.module('fullscreen.tv').directive('speech', function($window, $rootScope
           element.removeClass('speaking');
         }
         scope.speaking = flag;
-        $rootScope.$broadcast('ba-speech-speaking', {
+        scope.$broadcast('ba-speech-speaking', {
           speaking: scope.speaking
         });
         return scope.$digest();
@@ -387,11 +381,11 @@ angular.module('fullscreen.tv').directive('speech', function($window, $rootScope
         synthesis.cancel();
         return speak(attrs.speech);
       });
-      $rootScope.$on('ba-speech-disable', function() {
+      scope.$on('ba-speech-disable', function() {
         synthesis.cancel();
         return scope.enabled = false;
       });
-      return $rootScope.$on('ba-speech-enable', function() {
+      return scope.$on('ba-speech-enable', function() {
         return scope.enabled = true;
       });
     }
@@ -418,7 +412,7 @@ angular.module('fullscreen.tv').factory('analytics', function() {
 });
 
 angular.module('fullscreen.tv').service('auth', function($firebase, $firebaseSimpleLogin, $cookies, config) {
-  var auth, hasAccount, login, updateBasic, updateComplete, updateUser, user;
+  var auth, hasAccount, login, publicAPI, updateBasic, updateComplete, updateUser, user;
   auth = $firebaseSimpleLogin(new Firebase(config.firebase["default"]));
   user = {
     complete: $firebase(new Firebase("" + config.firebase.users + "/complete/" + $cookies.guid)),
@@ -427,16 +421,18 @@ angular.module('fullscreen.tv').service('auth', function($firebase, $firebaseSim
   login = function(service) {
     switch (service) {
       case 'facebook':
-        console.log('config', config.firebase.auth.facebook);
         return auth.$login('facebook', config.firebase.auth.facebook).then(function(providerDetails) {
+          console.log('facebook', providerDetails);
           return updateUser(providerDetails);
         });
       case 'github':
         return auth.$login('github', config.firebase.auth.github).then(function(providerDetails) {
+          console.log('github', providerDetails);
           return updateUser(providerDetails);
         });
       case 'twitter':
         return auth.$login('twitter', config.firebase.auth.twitter).then(function(providerDetails) {
+          console.log('twitter', providerDetails);
           return updateUser(providerDetails);
         });
     }
@@ -470,7 +466,7 @@ angular.module('fullscreen.tv').service('auth', function($firebase, $firebaseSim
     user.basic.twitter = _.has(user.complete, 'twitter');
     return user.basic.$save();
   };
-  return {
+  return publicAPI = {
     login: login,
     hasAccount: hasAccount,
     user: user.basic,

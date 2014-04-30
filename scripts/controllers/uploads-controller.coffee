@@ -1,4 +1,4 @@
-angular.module('fullscreen.tv').controller 'uploadsController', ($scope, firebase, $filter, auth) ->
+angular.module('fullscreen.tv').controller 'uploadsController', ($scope, firebase) ->
   $scope.userUploads = []
   $scope.gridOptions =
     data: 'userUploads'
@@ -16,10 +16,4 @@ angular.module('fullscreen.tv').controller 'uploadsController', ($scope, firebas
       displayName: 'Size'
     ]
 
-  firebase.userUploads.$on 'loaded', (data) ->
-    console.log 'test', firebase.userUploads
-    $filter('orderByPriority')(data)
-    $scope.userUploads = _(data).toArray()
-#    console.log 'userUploads', $scope.userUploads
-#    console.log '$scope.userUploads', $scope.userUploads
-    $scope.$digest()
+  $scope.userUploads = firebase.userUploads

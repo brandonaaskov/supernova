@@ -23,8 +23,6 @@
   <script src="vendor/firebase-simple-login/firebase-simple-login.js"></script>
 
   <!-- ui/ux stuff -->
-  <script src="vendor/ng-grid/ng-grid-2.0.10.min.js"></script>
-  <link rel="stylesheet" href="vendor/ng-grid/ng-grid.min.css"/>
   <script src="vendor/filepicker/filepicker.min.js"></script> <!-- file uploader service -->
 
   <!-- videojs -->
@@ -72,9 +70,19 @@
           speech="manage your pile of crap"
       >Step 2: Manage</h1>
 
-      <div class="uploads">
-        <div class="grid" ng-grid="gridOptions"></div>
-      </div>
+      <ol class="uploads">
+        <li class="video" ng-repeat="video in userUploads">
+          <span class="filename"
+                contenteditable
+                on-blur="userUploads.$save()"
+                ng-model="video.displayName"
+          >{{video.displayName}}</span>
+
+           <span class="btn btn-default btn-xs"
+                 ng-click="video.updateJobProgress()"
+           >{{video.zencoder.jobStatus}}</span>
+        </li>
+      </ol>
     </div>
   </div>
 

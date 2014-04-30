@@ -54,4 +54,5 @@ angular.module('fullscreen.tv').directive 'speech', ($window) ->
     scope.$on 'ba-speech-disable', ->
       synthesis.cancel()
       scope.enabled = false
+
     scope.$on 'ba-speech-enable', -> scope.enabled = true
